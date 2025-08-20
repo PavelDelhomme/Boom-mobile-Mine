@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "generated": "2024-01-15T10:00:00Z",
+    "description": "Données réalistes des stations d'arbres pour l'application Boom"
+  },
+  "cities": [
+    {
+      "name": "Nantes",
+      "center": [47.2184, -1.5536],
+      "radius": 6000,
+      "expectedCount": 120,
+      "characteristics": {
+        "urbanDensity": "high",
+        "treeTypes": ["Chêne", "Platane", "Tilleul", "Érable"],
+        "commonLandscapes": ["Alignement de rue", "Parc public", "Place publique"]
+      }
+    },
+    {
+      "name": "Vertou",
+      "center": [47.1684, -1.4693],
+      "radius": 4000,
+      "expectedCount": 80,
+      "characteristics": {
+        "urbanDensity": "medium",
+        "treeTypes": ["Chêne", "Frêne", "Hêtre"],
+        "commonLandscapes": ["Parc public", "Espace vert résidentiel"]
+      }
+    },
+    {
+      "name": "Rezé",
+      "center": [47.1937, -1.5503],
+      "radius": 3500,
+      "expectedCount": 60,
+      "characteristics": {
+        "urbanDensity": "medium",
+        "treeTypes": ["Platane", "Tilleul", "Marronnier"],
+        "commonLandscapes": ["Alignement de rue", "Rond-point", "Jardin public"]
+      }
+    }
+  ],
+  "stationTemplates": {
+    "healthyTree": {
+      "treesToCut": null,
+      "warning": null,
+      "highlight": false,
+      "humanFrequency": 3,
+      "espaceBoiseClasse": false,
+      "interetPaysager": true,
+      "meriteProtection": true
+    },
+    "problematicTree": {
+      "treesToCut": 2,
+      "warning": "Élagage nécessaire",
+      "highlight": true,
+      "humanFrequency": 4,
+      "espaceBoiseClasse": false,
+      "interetPaysager": false,
+      "meriteProtection": false
+    },
+    "protectedTree": {
+      "treesToCut": null,
+      "warning": null,
+      "highlight": true,
+      "humanFrequency": 2,
+      "espaceBoiseClasse": true,
+      "interetPaysager": true,
+      "meriteProtection": true,
+      "commentaireProtection": "Arbre remarquable classé"
+    }
+  },
+  "warningTypes": [
+    "Maladie détectée",
+    "Élagage nécessaire",
+    "Racines exposées",
+    "Branches cassées",
+    "Déchaussement",
+    "Parasite présent"
+  ],
+  "landscapeTypes": [
+    "Parc public",
+    "Jardin public",
+    "Alignement de rue",
+    "Place publique",
+    "Cour d'école",
+    "Cimetière",
+    "Espace vert résidentiel",
+    "Zone industrielle",
+    "Rond-point",
+    "Parking",
+    "Terrain de sport",
+    "Bord de rivière",
+    "Forêt",
+    "Privé"
+  ]
+}

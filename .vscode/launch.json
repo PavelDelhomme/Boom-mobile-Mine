@@ -1,0 +1,48 @@
+{
+    // Utilisez IntelliSense pour en savoir plus sur les attributs possibles.
+    // Pointez pour afficher la description des attributs existants.
+    // Pour plus d'informations, visitez : https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "BV9700Pro (Device)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "BV9700Pro",
+            "args": ["-d", "BV9700Pro"]
+        },
+        {
+            "name": "Samsung SM-G990B2 (Device)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "SM G990B2",
+            "args": ["-d", "SM G990B2"]
+        },
+        {
+            "name": "Pixel 7a (Emulator)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "Pixel_7a",
+            "args": ["-d", "Pixel_7a"]
+        },
+        {
+            "name": "Pixel 3a - (Android 9) (Emulator)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "emulator-5554",
+            "args": ["-d", "emulator-5554"]
+        }
+        // {
+        //     "name": "Boom-mobile (profile mode)",
+        //     "request": "launch",
+        //     "type": "dart",
+        //     "flutterMode": "profile",
+        // },
+        // {
+        //     "name": "Boom-mobile (release mode)",
+        //     "request": "launch",
+        //     "type": "dart",
+        //     "flutterMode": "release"
+        // }
+    ]
+}
