@@ -6,10 +6,10 @@ import 'package:latlong2/latlong.dart';
 
 class LocationMapView extends StatefulWidget {
   @override
-  _LocationMapViewState createState() => _LocationMapViewState();
+  LocationMapViewState createState() => LocationMapViewState();
 }
 
-class _LocationMapViewState extends State<LocationMapView> {
+class LocationMapViewState extends State<LocationMapView> {
   final MapController _mapController = MapController();
   bool _hasLocationPermission = false;
   String _locationStatus = 'Vérification...';
@@ -133,8 +133,8 @@ class _LocationMapViewState extends State<LocationMapView> {
             heroTag: "center_location",
             onPressed: _centerOnCurrentLocation,
             backgroundColor: Colors.blue,
-            child: const Icon(Icons.my_location),
             tooltip: 'Centrer sur ma position',
+            child: const Icon(Icons.my_location),
           ),
           const SizedBox(height: 12),
 
@@ -143,16 +143,16 @@ class _LocationMapViewState extends State<LocationMapView> {
             heroTag: "refresh_location",
             onPressed: _refreshLocation,
             backgroundColor: Colors.green,
-            child: const Icon(Icons.refresh),
             tooltip: 'Actualiser ma position',
+            child: const Icon(Icons.refresh),
           ),
         ],
       )
           : FloatingActionButton(
         onPressed: _requestLocationPermission,
         backgroundColor: Colors.orange,
-        child: const Icon(Icons.location_disabled),
         tooltip: 'Activer la localisation',
+        child: const Icon(Icons.location_disabled),
       ),
     );
   }

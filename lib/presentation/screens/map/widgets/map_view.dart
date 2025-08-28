@@ -1,3 +1,4 @@
+import 'package:boom_mobile/data/interfaces/draw_service_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
@@ -6,9 +7,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../data/services/layer_service.dart';
 import '../../../../domain/entities/station.dart';
-import '../../../../services/layer_service.dart';
-import '../../../../services/draw_service.dart';
+import '../../../../data/services/draw_service.dart';
 
 class MapView extends StatefulWidget {
   final LatLng center;
@@ -445,8 +446,24 @@ class _MapViewState extends State<MapView> {
 
   // Getters pour récupérer les géométries créées
   List<LatLng> getDrawnPoints() => context.read<DrawService>().points;
-  List<Polyline> getDrawnLines() => context.read<DrawService>().polylines;
-  List<Polygon> getDrawnPolygons() => context.read<DrawService>().polygons;
+  List<Polyline> getDrawnLines() {
+    final drawService = context.read<DrawService>();
+    return drawService.polylines.map((line) => Polyline(
+      points: line,
+      strokeWidth: 3.0,
+      color: const Color(0xFF3EAF6E),
+      pattern: const StrokePattern.solid(),
+    )).toList();
+  }
+  List<Polygon> getDrawnPolygons() {
+    final drawService = context.read<DrawService>();
+    return drawService.polygons.map((polygon) => Polygon(
+      points: polygon,
+      borderStrokeWidth: 3.0,
+      color: const Color(0xFF3EAF6E).withOpacity(0.3),
+      borderColor: const Color(0xFF3EAF6E),
+    )).toList();
+  }
 
   // Informations sur l'état d'édition
   DrawTool get currentEditingMode => context.read<DrawService>().currentTool;

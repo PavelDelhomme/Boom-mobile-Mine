@@ -285,7 +285,8 @@ class BoomRealisticData {
   }
 
   // ✅ Méthode helper pour générer un point aléatoire autour d'un centre
-  static LatLng _generateRandomPoint(LatLng center, double radiusMeters, Random random) {
+  static LatLng _generateRandomPoint(LatLng center, double radiusMeters,
+      Random random) {
     // Convertir le rayon en degrés approximativement
     final radiusDegrees = radiusMeters / 111320; // 1 degré ≈ 111.32 km
 
@@ -355,7 +356,7 @@ class BoomRealisticData {
     }).toList();
   }
 
-  // GÉNÉRATION STATIONS RÉALISTES
+  // GÉNÉRATION STATIONS RÉALISTES AVEC GÉOMÉTRIES
   static List<Station> _generateRealisticStations(
       LatLng center, {
         required int count,
@@ -377,8 +378,11 @@ class BoomRealisticData {
 
       final urgence = _calculateUrgence(etatSanitaire, needsIntervention);
 
+      // ✅ NOUVEAU: Générer des géométries réalistes selon le type de paysage
+      final geometries = _generateStationGeometries(point, paysage, random);
+
       return Station(
-        numeroStation: _generateStationNumber(communeName, index), // ✅ CORRIGÉ: retourne int
+        numeroStation: _generateStationNumber(communeName, index),
         latitude: point.latitude,
         longitude: point.longitude,
         treesToCut: needsIntervention ? random.nextInt(3) + 1 : null,
@@ -400,12 +404,350 @@ class BoomRealisticData {
             : null,
 
         photoUrls: _generateRealisticPhotos(random),
+
+        // ✅ NOUVEAU: Ajout des géométries générées
+        points: geometries['points'] as List<LatLng>?,
+        lignes: geometries['lignes'] as List<List<LatLng>>?,
+        polygones: geometries['polygones'] as List<List<LatLng>>?,
+
+        // Identité (ajout des champs manquants)
+        identifiantExterne: "EXT-${communeName.substring(0, 3).toUpperCase()}-${index + 1}",
+        archiveNumero: random.nextDouble() < 0.3 ? "ARC${random.nextInt(999).toString().padLeft(3, '0')}" : null,
+        adresse: _generateRealisticAddress(communeName, random),
+        baseDonneesEssence: essence,
+        essenceLibre: random.nextDouble() < 0.1 ? "Essence hybride locale" : null,
+        variete: random.nextDouble() < 0.2 ? "Variété ${['Alba', 'Pendula', 'Fastigiata', 'Purpurea'][random.nextInt(4)]}" : null,
+        stadeDeveloppement: stadesDeveloppement[random.nextInt(stadesDeveloppement.length)],
+        sujetVeteran: random.nextDouble() < 0.05, // 5% sont vétérans
+        anneePlantation: random.nextDouble() < 0.4 ? (DateTime.now().year - random.nextInt(50)) : null,
+        appartenantGroupe: random.nextDouble() < 0.3,
+        arbreReplanter: random.nextDouble() < 0.15,
+
+        // Forme et gabarit
+        structureTronc: ['Simple', 'Multiple', 'Cépée'][random.nextInt(3)],
+        portForme: ['Érigé', 'Étalé', 'Pleureur', 'Fastigié'][random.nextInt(4)],
+        diametreTronc: (10 + random.nextInt(80)).toDouble(),
+        circonferenceTronc: (30 + random.nextInt(250)).toDouble(),
+        hauteurGenerale: (3 + random.nextInt(25)).toDouble(),
       );
     });
   }
 
+
+  // ✅ NOUVEAU: Génération intelligente de géométries selon le contexte
+  static Map<String, dynamic> _generateStationGeometries(
+      LatLng center, String paysage, Random random) {
+
+    // Probabilités de géométries selon le type de paysage
+    final geometryConfig = _getGeometryConfigForLandscape(paysage);
+
+    List<LatLng>? points;
+    List<List<LatLng>>? lignes;
+    List<List<LatLng>>? polygones;
+
+    final geometryType = _selectGeometryType(geometryConfig, random);
+
+    switch (geometryType) {
+      case 'point':
+      // Point simple (arbre isolé)
+        points = [center];
+
+        // Parfois des points additionnels pour groupe d'arbres
+        if (random.nextDouble() < 0.3) {
+          final additionalPoints = _generateNearbyPoints(center, random.nextInt(4) + 1, 10.0, random);
+          points.addAll(additionalPoints);
+        }
+        break;
+
+      case 'ligne':
+      // Ligne (alignement d'arbres)
+        lignes = [_generateAlignmentLine(center, paysage, random)];
+
+        // Points aux extrémités et intersections importantes
+        if (random.nextDouble() < 0.4) {
+          points = [lignes.first.first, lignes.first.last];
+        }
+        break;
+
+      case 'polygone':
+      // Polygone (bosquet, zone boisée)
+        polygones = [_generateRealisticPolygon(center, paysage, random)];
+
+        // Points remarquables dans la zone
+        if (random.nextDouble() < 0.5) {
+          points = _generatePointsInPolygon(polygones.first, random.nextInt(3) + 1, random);
+        }
+        break;
+
+      case 'mixed':
+      // Géométrie mixte (complexe urbaine)
+        points = [center];
+        lignes = [_generateShortLine(center, random)];
+
+        if (random.nextDouble() < 0.6) {
+          polygones = [_generateSmallPolygon(center, random)];
+        }
+        break;
+    }
+
+    return {
+      'points': points,
+      'lignes': lignes,
+      'polygones': polygones,
+    };
+  }
+
+// ✅ Configuration des géométries par type de paysage
+  static Map<String, double> _getGeometryConfigForLandscape(String paysage) {
+    switch (paysage) {
+      case 'Alignement de rue':
+        return {'ligne': 0.70, 'point': 0.25, 'polygone': 0.05, 'mixed': 0.0};
+
+      case 'Parc public':
+      case 'Jardin public':
+        return {'polygone': 0.45, 'point': 0.30, 'ligne': 0.15, 'mixed': 0.10};
+
+      case 'Place publique':
+        return {'point': 0.50, 'ligne': 0.30, 'polygone': 0.15, 'mixed': 0.05};
+
+      case 'Espace vert résidentiel':
+        return {'polygone': 0.40, 'point': 0.35, 'ligne': 0.15, 'mixed': 0.10};
+
+      case 'Cimetière':
+        return {'ligne': 0.45, 'point': 0.35, 'polygone': 0.20, 'mixed': 0.0};
+
+      case 'Rond-point':
+        return {'polygone': 0.60, 'point': 0.25, 'ligne': 0.15, 'mixed': 0.0};
+
+      case 'Bord de rivière':
+        return {'ligne': 0.55, 'polygone': 0.30, 'point': 0.15, 'mixed': 0.0};
+
+      default:
+        return {'point': 0.40, 'ligne': 0.30, 'polygone': 0.25, 'mixed': 0.05};
+    }
+  }
+
+  // ✅ Sélection du type de géométrie basée sur les probabilités
+  static String _selectGeometryType(Map<String, double> config, Random random) {
+    final rand = random.nextDouble();
+    double cumulative = 0.0;
+
+    for (final entry in config.entries) {
+      cumulative += entry.value;
+      if (rand <= cumulative) {
+        return entry.key;
+      }
+    }
+
+    return 'point'; // Fallback
+  }
+
+  // ✅ Génération de points multiples à proximité
+  static List<LatLng> _generateNearbyPoints(LatLng center, int count,
+      double radiusMeters, Random random) {
+    return List.generate(count, (index) {
+      final angle = (2 * math.pi * index) / count + random.nextDouble() * 0.5;
+      final distance = radiusMeters * (0.3 + random.nextDouble() * 0.7);
+
+      final dx = (distance * math.cos(angle)) / 111320;
+      final dy = (distance * math.sin(angle)) / 111320;
+
+      return LatLng(center.latitude + dy, center.longitude + dx);
+    });
+  }
+
+
+  // ✅ Génération d'alignements d'arbres réalistes
+  static List<LatLng> _generateAlignmentLine(LatLng center, String paysage,
+      Random random) {
+    final length = _getAlignmentLength(paysage, random);
+    final angle = random.nextDouble() * 2 * math.pi;
+    final pointCount = (length / 15).round().clamp(3, 12); // Espacement ~15m
+
+    return List.generate(pointCount, (index) {
+      final distance = (length * index) / (pointCount - 1) - length / 2;
+
+      final dx = (distance * math.cos(angle)) / 111320;
+      final dy = (distance * math.sin(angle)) / 111320;
+
+      return LatLng(
+        center.latitude + dy,
+        center.longitude + dx,
+      );
+    });
+  }
+
+  // ✅ Longueur d'alignement selon le contexte
+  static double _getAlignmentLength(String paysage, Random random) {
+    switch (paysage) {
+      case 'Alignement de rue':
+        return 80 + random.nextInt(120).toDouble(); // 80-200m
+      case 'Cimetière':
+        return 40 + random.nextInt(60).toDouble(); // 40-100m
+      case 'Parc public':
+        return 60 + random.nextInt(90).toDouble(); // 60-150m
+      default:
+        return 30 + random.nextInt(70).toDouble(); // 30-100m
+    }
+  }
+
+  // ✅ Génération de polygones réalistes
+  static List<LatLng> _generateRealisticPolygon(LatLng center, String paysage,
+      Random random) {
+    final radius = _getPolygonRadius(paysage, random);
+    final vertexCount = _getPolygonVertexCount(paysage, random);
+
+    return List.generate(vertexCount, (index) {
+      final baseAngle = (2 * math.pi * index) / vertexCount;
+      final angleVariation = (random.nextDouble() - 0.5) *
+          0.8; // Variation naturelle
+      final angle = baseAngle + angleVariation;
+
+      final radiusVariation = 0.7 +
+          random.nextDouble() * 0.6; // 70-130% du rayon
+      final actualRadius = radius * radiusVariation;
+
+      final dx = (actualRadius * math.cos(angle)) / 111320;
+      final dy = (actualRadius * math.sin(angle)) / 111320;
+
+      return LatLng(center.latitude + dy, center.longitude + dx);
+    });
+  }
+
+  // ✅ Rayon de polygone selon le contexte
+  static double _getPolygonRadius(String paysage, Random random) {
+    switch (paysage) {
+      case 'Parc public':
+      case 'Espace vert résidentiel':
+        return 25 + random.nextInt(40).toDouble(); // 25-65m
+      case 'Rond-point':
+        return 8 + random.nextInt(12).toDouble(); // 8-20m
+      case 'Bord de rivière':
+        return 15 + random.nextInt(25).toDouble(); // 15-40m
+      default:
+        return 12 + random.nextInt(20).toDouble(); // 12-32m
+    }
+  }
+
+  // ✅ Nombre de sommets selon le type
+  static int _getPolygonVertexCount(String paysage, Random random) {
+    switch (paysage) {
+      case 'Rond-point':
+        return 6 + random.nextInt(3); // 6-8 sommets (forme plus régulière)
+      case 'Parc public':
+        return 5 + random.nextInt(4); // 5-8 sommets (forme naturelle)
+      default:
+        return 4 + random.nextInt(3); // 4-6 sommets (forme simple)
+    }
+  }
+
+  // ✅ Génération de lignes courtes pour géométries mixtes
+  static List<LatLng> _generateShortLine(LatLng center, Random random) {
+    final length = 20 + random.nextInt(30).toDouble(); // 20-50m
+    final angle = random.nextDouble() * 2 * math.pi;
+
+    final dx = (length * math.cos(angle)) / 111320;
+    final dy = (length * math.sin(angle)) / 111320;
+
+    return [
+      LatLng(center.latitude - dy / 2, center.longitude - dx / 2),
+      center,
+      LatLng(center.latitude + dy / 2, center.longitude + dx / 2),
+    ];
+  }
+
+  // ✅ Génération de petits polygones pour géométries mixtes
+  static List<LatLng> _generateSmallPolygon(LatLng center, Random random) {
+    final radius = 8 + random.nextInt(12).toDouble(); // 8-20m
+    return _generateRealisticPolygon(center, 'default', random);
+  }
+
+  // ✅ Génération de points à l'intérieur d'un polygone
+  static List<LatLng> _generatePointsInPolygon(List<LatLng> polygon, int count,
+      Random random) {
+    final bounds = _getPolygonBounds(polygon);
+    final points = <LatLng>[];
+
+    int attempts = 0;
+    while (points.length < count && attempts < count * 10) {
+      final testPoint = LatLng(
+        bounds['minLat']! +
+            random.nextDouble() * (bounds['maxLat']! - bounds['minLat']!),
+        bounds['minLng']! +
+            random.nextDouble() * (bounds['maxLng']! - bounds['minLng']!),
+      );
+
+      if (_isPointInPolygon(testPoint, polygon)) {
+        points.add(testPoint);
+      }
+      attempts++;
+    }
+
+    return points;
+  }
+
+  // ✅ Calcul des limites d'un polygone
+  static Map<String, double> _getPolygonBounds(List<LatLng> polygon) {
+    double minLat = polygon.first.latitude;
+    double maxLat = polygon.first.latitude;
+    double minLng = polygon.first.longitude;
+    double maxLng = polygon.first.longitude;
+
+    for (final point in polygon) {
+      minLat = math.min(minLat, point.latitude);
+      maxLat = math.max(maxLat, point.latitude);
+      minLng = math.min(minLng, point.longitude);
+      maxLng = math.max(maxLng, point.longitude);
+    }
+
+    return {
+      'minLat': minLat,
+      'maxLat': maxLat,
+      'minLng': minLng,
+      'maxLng': maxLng,
+    };
+  }
+
+  // ✅ Test si un point est dans un polygone (algorithme ray casting simple)
+  static bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
+    bool inside = false;
+    int j = polygon.length - 1;
+
+    for (int i = 0; i < polygon.length; i++) {
+      final xi = polygon[i].longitude;
+      final yi = polygon[i].latitude;
+      final xj = polygon[j].longitude;
+      final yj = polygon[j].latitude;
+
+      if (((yi > point.latitude) != (yj > point.latitude)) &&
+          (point.longitude <
+              (xj - xi) * (point.latitude - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+      j = i;
+    }
+
+    return inside;
+  }
+
+  // ✅ AJOUT: Génération d'adresses réalistes
+  static String _generateRealisticAddress(String communeName, Random random) {
+    final rues = [
+      'Rue de la Paix', 'Avenue des Tilleuls', 'Place du Marché',
+      'Boulevard des Chênes', 'Allée des Jardins', 'Impasse Verte',
+      'Rue des Écoles', 'Avenue de la République', 'Place de l\'Église'
+    ];
+
+    final numero = 1 + random.nextInt(199);
+    final rue = rues[random.nextInt(rues.length)];
+
+    return '$numero $rue, $communeName';
+  }
+
+
   // POSITION URBAINE RÉALISTE
-  static LatLng _generateUrbanTreePosition(LatLng center, Random random, String commune) {
+  static LatLng _generateUrbanTreePosition(LatLng center, Random random,
+      String commune) {
     final densityFactors = {
       'Rennes': 0.8,
       'Cesson-Sévigné': 0.6,
@@ -437,8 +779,7 @@ class BoomRealisticData {
   }
 
   // ✅ GÉNÉRATION MARKERS RÉALISTES À PARTIR DES STATIONS
-  static List<Marker> _generateMarkersFromStations(
-      BuildContext context,
+  static List<Marker> _generateMarkersFromStations(BuildContext context,
       List<Station> stations, {
         bool showBadges = true,
       }) {
@@ -467,8 +808,7 @@ class BoomRealisticData {
   }
 
   // ✅ GÉNÉRATION MARKERS POUR COUCHES (signature corrigée)
-  static List<Marker> generateStationMarkers(
-      LatLng center,
+  static List<Marker> generateStationMarkers(LatLng center,
       BuildContext context, {
         required int count,
         bool showBadges = true,
@@ -478,14 +818,14 @@ class BoomRealisticData {
       count: count,
       communeName: 'Rennes',
     );
-    return _generateMarkersFromStations(context, stations, showBadges: showBadges);
+    return _generateMarkersFromStations(
+        context, stations, showBadges: showBadges);
   }
 
-  static List<Marker> generateInterventionMarkers(
-      LatLng center, {
-        required int count,
-        bool showBadges = true,
-      }) {
+  static List<Marker> generateInterventionMarkers(LatLng center, {
+    required int count,
+    bool showBadges = true,
+  }) {
     final Random random = Random();
     return List.generate(count, (index) {
       final point = _generateUrbanTreePosition(center, random, 'Rennes');
@@ -510,11 +850,10 @@ class BoomRealisticData {
     });
   }
 
-  static List<Marker> generateRemarkableTreeMarkers(
-      LatLng center, {
-        required int count,
-        bool showBadges = true,
-      }) {
+  static List<Marker> generateRemarkableTreeMarkers(LatLng center, {
+    required int count,
+    bool showBadges = true,
+  }) {
     final Random random = Random();
     return List.generate(count, (index) {
       final point = _generateUrbanTreePosition(center, random, 'Rennes');
@@ -542,16 +881,46 @@ class BoomRealisticData {
   // UTILISATEURS RÉALISTES
   static List<User> generateRealisticUsers() {
     return [
-      User(name: "Alexandra Padounou", role: "Responsable technique", date: "Active", email: "a.padounou@aubepine-scop.fr"),
-      User(name: "Jean-Marc Lebon", role: "Arboriste-grimpeur", date: "Active", email: "jm.lebon@aubepine-scop.fr"),
-      User(name: "Sophie Moreau", role: "Ingénieure environnement", date: "Active", email: "s.moreau@aubepine-scop.fr"),
-      User(name: "Pierre Durand", role: "Technicien SIG", date: "Active", email: "p.durand@aubepine-scop.fr"),
-      User(name: "Camille Bernard", role: "Gestionnaire données", date: "Active", email: "c.bernard@aubepine-scop.fr"),
-      User(name: "Marc Rousseau", role: "Chef d'équipe", date: "Congés", email: "m.rousseau@aubepine-scop.fr"),
-      User(name: "Élise Fontaine", role: "Arboriste-conseil", date: "Mission", email: "e.fontaine@aubepine-scop.fr"),
-      User(name: "Thomas Leclerc", role: "Conducteur d'engins", date: "Active", email: "t.leclerc@aubepine-scop.fr"),
-      User(name: "Marine Dubois", role: "Coordinatrice projets", date: "Active", email: "m.dubois@aubepine-scop.fr"),
-      User(name: "Vincent Garcia", role: "Formateur sécurité", date: "Formation", email: "v.garcia@aubepine-scop.fr"),
+      User(name: "Alexandra Padounou",
+          role: "Responsable technique",
+          date: "Active",
+          email: "a.padounou@aubepine-scop.fr"),
+      User(name: "Jean-Marc Lebon",
+          role: "Arboriste-grimpeur",
+          date: "Active",
+          email: "jm.lebon@aubepine-scop.fr"),
+      User(name: "Sophie Moreau",
+          role: "Ingénieure environnement",
+          date: "Active",
+          email: "s.moreau@aubepine-scop.fr"),
+      User(name: "Pierre Durand",
+          role: "Technicien SIG",
+          date: "Active",
+          email: "p.durand@aubepine-scop.fr"),
+      User(name: "Camille Bernard",
+          role: "Gestionnaire données",
+          date: "Active",
+          email: "c.bernard@aubepine-scop.fr"),
+      User(name: "Marc Rousseau",
+          role: "Chef d'équipe",
+          date: "Congés",
+          email: "m.rousseau@aubepine-scop.fr"),
+      User(name: "Élise Fontaine",
+          role: "Arboriste-conseil",
+          date: "Mission",
+          email: "e.fontaine@aubepine-scop.fr"),
+      User(name: "Thomas Leclerc",
+          role: "Conducteur d'engins",
+          date: "Active",
+          email: "t.leclerc@aubepine-scop.fr"),
+      User(name: "Marine Dubois",
+          role: "Coordinatrice projets",
+          date: "Active",
+          email: "m.dubois@aubepine-scop.fr"),
+      User(name: "Vincent Garcia",
+          role: "Formateur sécurité",
+          date: "Formation",
+          email: "v.garcia@aubepine-scop.fr"),
     ];
   }
 
@@ -684,5 +1053,939 @@ class BoomRealisticData {
     } else {
       return Colors.green; // Bon état
     }
+  }
+
+  // ✅ GÉNÉRATION MARKERS AVEC GÉOMÉTRIES COMPLÈTES
+  static List<Widget> generateStationMarkersWithGeometries(
+      LatLng center,
+      BuildContext context, {
+        required int count,
+        bool showBadges = true,
+      }) {
+    final stations = _generateRealisticStations(
+      center,
+      count: count,
+      communeName: 'Rennes',
+    );
+
+    List<Widget> widgets = [];
+
+    for (final station in stations) {
+      final stationColor = _getColorFromHealthState(station);
+
+      // 1. Polygones en arrière-plan
+      if (station.polygones != null && station.polygones!.isNotEmpty) {
+        for (final polygonPoints in station.polygones!) {
+          widgets.add(
+            PolygonLayer(
+              polygons: [
+                Polygon(
+                  points: polygonPoints,
+                  color: stationColor.withValues(alpha: 0.2),
+                  borderColor: stationColor,
+                  borderStrokeWidth: 2,
+                  label: 'Station ${station.numeroStation}',
+                ),
+              ],
+            ),
+          );
+        }
+      }
+
+      // 2. Lignes (alignements)
+      if (station.lignes != null && station.lignes!.isNotEmpty) {
+        for (final linePoints in station.lignes!) {
+          widgets.add(
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: linePoints,
+                  color: stationColor,
+                  strokeWidth: 4,
+                  pattern: StrokePattern.solid(),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+
+      // 3. Points (markers individuels)
+      if (station.points != null && station.points!.isNotEmpty) {
+        for (int i = 0; i < station.points!.length; i++) {
+          final point = station.points![i];
+          final isMainPoint = i == 0; // Premier point = point principal
+
+          widgets.add(
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: point,
+                  width: isMainPoint ? 60 : 40,
+                  height: isMainPoint ? 60 : 40,
+                  alignment: Alignment.center,
+                  child: GestureDetector(
+                    onTap: () => _handleStationTap(context, station),
+                    onLongPress: () => _handleStationLongPress(context, station),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: stationColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: isMainPoint ? 3 : 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            _getStationIcon(station),
+                            color: Colors.white,
+                            size: isMainPoint ? 24 : 16,
+                          ),
+                          if (showBadges && station.treesToCut != null && station.treesToCut! > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '${station.treesToCut}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (showBadges && station.warning != null)
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(1),
+                                decoration: const BoxDecoration(
+                                  color: Colors.orange,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.warning,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        // Fallback: point simple à la position de la station
+        widgets.add(
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(station.latitude, station.longitude),
+                width: 60,
+                height: 60,
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: () => _handleStationTap(context, station),
+                  onLongPress: () => _handleStationLongPress(context, station),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: stationColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _getStationIcon(station),
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    return widgets;
+  }
+
+  // ✅ Icône selon le type de géométrie NON NECESSAIRE PUTAIN PAS BESOIN D4ICONE DE STATION JUSTE LA COULEUR QUOI MERDE
+  static IconData _getStationIcon(Station station) {
+    if (station.polygones != null && station.polygones!.isNotEmpty) {
+      return Icons.forest; // Zone boisée
+    } else if (station.lignes != null && station.lignes!.isNotEmpty) {
+      return Icons.linear_scale; // Alignement
+    } else if (station.points != null && station.points!.length > 1) {
+      return Icons.scatter_plot; // Groupe de points
+    } else {
+      return Icons.location_on; // Point simple
+    }
+  }
+
+  // ✅ Gestion des interactions avec les stations
+  static void _handleStationTap(BuildContext context, Station station) {
+    // Afficher les détails de la station
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Station ${station.numeroStation}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${station.treeLandscape}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildGeometryInfo(station),
+                    const SizedBox(height: 16),
+                    if (station.baseDonneesEssence != null)
+                      Text(
+                        'Essence: ${station.baseDonneesEssence}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    if (station.commentaireProtection != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        station.commentaireProtection!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
+  // ✅ Affichage des informations de géométrie
+  static Widget _buildGeometryInfo(Station station) {
+    List<Widget> geometryWidgets = [];
+
+    if (station.points != null && station.points!.isNotEmpty) {
+      geometryWidgets.add(
+        Row(
+          children: [
+            const Icon(Icons.location_on, size: 16, color: Colors.blue),
+            const SizedBox(width: 4),
+            Text('${station.points!.length} point(s)'),
+          ],
+        ),
+      );
+    }
+
+    if (station.lignes != null && station.lignes!.isNotEmpty) {
+      final totalPoints = station.lignes!.fold(0, (sum, ligne) => sum + ligne.length);
+      geometryWidgets.add(
+        Row(
+          children: [
+            const Icon(Icons.linear_scale, size: 16, color: Colors.green),
+            const SizedBox(width: 4),
+            Text('${station.lignes!.length} ligne(s) - $totalPoints points'),
+          ],
+        ),
+      );
+    }
+
+    if (station.polygones != null && station.polygones!.isNotEmpty) {
+      final totalVertices = station.polygones!.fold(0, (sum, poly) => sum + poly.length);
+      geometryWidgets.add(
+        Row(
+          children: [
+            const Icon(Icons.crop_free, size: 16, color: Colors.orange),
+            const SizedBox(width: 4),
+            Text('${station.polygones!.length} polygone(s) - $totalVertices sommets'),
+          ],
+        ),
+      );
+    }
+
+    if (geometryWidgets.isEmpty) {
+      geometryWidgets.add(
+        Row(
+          children: [
+            const Icon(Icons.location_on, size: 16, color: Colors.grey),
+            const SizedBox(width: 4),
+            const Text('Position simple'),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Géométries:',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...geometryWidgets.map((w) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: w,
+        )),
+      ],
+    );
+  }
+
+  static void _handleStationLongPress(BuildContext context, Station station) {
+    // Menu contextuel pour édition rapide
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.info),
+                title: const Text('Voir les détails'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleStationTap(context, station);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_location),
+                title: const Text('Éditer la géométrie'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Ouvrir l'éditeur de géométrie
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_location),
+                title: const Text('Ajouter un point'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode ajout de point
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.timeline),
+                title: const Text('Créer une ligne'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode création de ligne
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.crop_free),
+                title: const Text('Créer un polygone'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode création de polygone
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+// ✅ NOUVEAU SYSTÈME D'AFFICHAGE - selon vos spécifications
+class StationDisplaySystem {
+
+  // ✅ Génération de l'affichage complet d'une station selon ses géométries
+  static List<Widget> generateStationDisplay({
+    required Station station,
+    required BuildContext context,
+    bool showBadges = true,
+    double currentZoom = 13.0,
+  }) {
+    List<Widget> layers = [];
+    final stationColor = _getColorFromHealthState(station);
+
+    // 1. POLYGONES (arrière-plan) - Zone grisée selon vos spécifications
+    if (station.polygones != null && station.polygones!.isNotEmpty) {
+      for (final polygonPoints in station.polygones!) {
+        layers.add(
+          PolygonLayer(
+            polygons: [
+              Polygon(
+                points: polygonPoints,
+                color: stationColor.withValues(alpha: 0.15), // Zone grisée légère
+                borderColor: stationColor,
+                borderStrokeWidth: 2,
+                label: 'Station ${station.numeroStation}',
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    // 2. LIGNES (alignements d'arbres)
+    if (station.lignes != null && station.lignes!.isNotEmpty) {
+      for (final linePoints in station.lignes!) {
+        layers.add(
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: linePoints,
+                color: stationColor,
+                strokeWidth: 3,
+                pattern: StrokePattern.solid(),
+              ),
+            ],
+          ),
+        );
+
+        // Ajouter des points aux extrémités de la ligne pour montrer les arbres
+        layers.add(
+          MarkerLayer(
+            markers: [
+              // Point de début
+              _createStationMarker(
+                point: linePoints.first,
+                station: station,
+                stationColor: stationColor,
+                context: context,
+                showBadges: showBadges,
+                isEndPoint: true,
+              ),
+              // Point de fin
+              _createStationMarker(
+                point: linePoints.last,
+                station: station,
+                stationColor: stationColor,
+                context: context,
+                showBadges: false, // Badges seulement sur le premier point
+                isEndPoint: true,
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    // 3. POINTS individuels (arbres isolés ou groupes)
+    if (station.points != null && station.points!.isNotEmpty) {
+      List<Marker> pointMarkers = [];
+
+      for (int i = 0; i < station.points!.length; i++) {
+        final point = station.points![i];
+        final isMainPoint = i == 0; // Premier point = point principal avec badges
+
+        pointMarkers.add(
+          _createStationMarker(
+            point: point,
+            station: station,
+            stationColor: stationColor,
+            context: context,
+            showBadges: showBadges && isMainPoint,
+            isMainPoint: isMainPoint,
+          ),
+        );
+      }
+
+      layers.add(MarkerLayer(markers: pointMarkers));
+    }
+
+    // 4. FALLBACK: Si aucune géométrie, afficher le point de position de base
+    if ((station.points?.isEmpty ?? true) &&
+        (station.lignes?.isEmpty ?? true) &&
+        (station.polygones?.isEmpty ?? true)) {
+      layers.add(
+        MarkerLayer(
+          markers: [
+            _createStationMarker(
+              point: LatLng(station.latitude, station.longitude),
+              station: station,
+              stationColor: stationColor,
+              context: context,
+              showBadges: showBadges,
+              isMainPoint: true,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return layers;
+  }
+
+  // ✅ Créer un marqueur de station (cercle coloré avec halo, pas d'icône)
+  static Marker _createStationMarker({
+    required LatLng point,
+    required Station station,
+    required Color stationColor,
+    required BuildContext context,
+    bool showBadges = true,
+    bool isMainPoint = false,
+    bool isEndPoint = false,
+  }) {
+    final size = isMainPoint ? 50.0 : (isEndPoint ? 35.0 : 40.0);
+
+    return Marker(
+      point: point,
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      child: GestureDetector(
+        onTap: () => _handleStationTap(context, station),
+        onLongPress: () => _handleStationLongPress(context, station),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Halo externe (effet de glow)
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: stationColor.withValues(alpha: 0.2),
+                border: Border.all(
+                  color: stationColor.withValues(alpha: 0.4),
+                  width: 2,
+                ),
+              ),
+            ),
+
+            // Cercle principal (pas d'icône selon vos spécifications)
+            Container(
+              width: size * 0.6,
+              height: size * 0.6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: stationColor,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+
+            // Badges (nombre d'arbres à couper)
+            if (showBadges && station.treesToCut != null && station.treesToCut! > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${station.treesToCut}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+            // Badge d'avertissement
+            if (showBadges && station.warning != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.warning,
+                    color: Colors.white,
+                    size: 8,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ Couleur selon l'état de santé (votre logique existante)
+  static Color _getColorFromHealthState(Station station) {
+    if (station.warning != null) {
+      return Colors.red; // Urgent
+    } else if (station.treesToCut != null && station.treesToCut! > 0) {
+      return Colors.orange; // Intervention nécessaire
+    } else if (station.highlight) {
+      return Colors.yellow; // Attention
+    } else {
+      return Colors.green; // Bon état
+    }
+  }
+
+  // ✅ Gestion des interactions (tap simple)
+  static void _handleStationTap(BuildContext context, Station station) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Contenu
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Station ${station.numeroStation}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (station.treeLandscape != null)
+                      Text(
+                        '${station.treeLandscape}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    _buildGeometryInfo(station),
+                    const SizedBox(height: 16),
+                    if (station.baseDonneesEssence != null)
+                      Text(
+                        'Essence: ${station.baseDonneesEssence}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    if (station.commentaireProtection != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        station.commentaireProtection!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            // Boutons d'action
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                      label: const Text('Fermer'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        // TODO: Ouvrir l'éditeur
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Éditer'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ Menu contextuel (long press)
+  static void _handleStationLongPress(BuildContext context, Station station) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.info, color: Colors.blue),
+                title: const Text('Voir les détails'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleStationTap(context, station);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_location, color: Colors.green),
+                title: const Text('Éditer géométrie'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode édition
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_location, color: Colors.orange),
+                title: const Text('Ajouter un point'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode ajout point
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.timeline, color: Colors.purple),
+                title: const Text('Créer une ligne'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode création ligne
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.crop_free, color: Colors.teal),
+                title: const Text('Créer un polygone'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Mode création polygone
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ✅ Affichage des informations de géométrie
+  static Widget _buildGeometryInfo(Station station) {
+    List<Widget> geometryWidgets = [];
+
+    if (station.points != null && station.points!.isNotEmpty) {
+      geometryWidgets.add(
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: _getColorFromHealthState(station),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('${station.points!.length} arbre(s) individuel(s)'),
+          ],
+        ),
+      );
+    }
+
+    if (station.lignes != null && station.lignes!.isNotEmpty) {
+      final totalPoints = station.lignes!.fold(0, (sum, ligne) => sum + ligne.length);
+      geometryWidgets.add(
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 4,
+              decoration: BoxDecoration(
+                color: _getColorFromHealthState(station),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('${station.lignes!.length} alignement(s) - $totalPoints arbres'),
+          ],
+        ),
+      );
+    }
+
+    if (station.polygones != null && station.polygones!.isNotEmpty) {
+      final totalVertices = station.polygones!.fold(0, (sum, poly) => sum + poly.length);
+      geometryWidgets.add(
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: _getColorFromHealthState(station).withValues(alpha: 0.3),
+                border: Border.all(color: _getColorFromHealthState(station), width: 2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('${station.polygones!.length} zone(s) boisée(s)'),
+          ],
+        ),
+      );
+    }
+
+    if (geometryWidgets.isEmpty) {
+      geometryWidgets.add(
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: const BoxDecoration(
+                color: Colors.grey,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('Position simple'),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Type de station:',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.green,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...geometryWidgets.map((w) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: w,
+        )),
+      ],
+    );
+  }
+
+  // ✅ Méthode pour générer toutes les stations d'un dossier avec leurs géométries
+  static List<Widget> generateAllStationsForMap({
+    required List<Station> stations,
+    required BuildContext context,
+    bool showBadges = true,
+    double currentZoom = 13.0,
+  }) {
+    List<Widget> allLayers = [];
+
+    for (final station in stations) {
+      allLayers.addAll(
+        generateStationDisplay(
+          station: station,
+          context: context,
+          showBadges: showBadges,
+          currentZoom: currentZoom,
+        ),
+      );
+    }
+
+    return allLayers;
   }
 }

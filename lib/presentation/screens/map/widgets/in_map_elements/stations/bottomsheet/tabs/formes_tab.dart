@@ -1,11 +1,9 @@
+import 'package:boom_mobile/data/services/station_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:boom_mobile/core/widgets/form/boom_text_field.dart';
 import 'package:boom_mobile/core/widgets/form/boom_title_with_divider.dart';
-import 'package:boom_mobile/services/station_service.dart';
 
-import '../../../../../../../../domain/entities/station.dart';
-import 'package:boom_mobile/core/theme/app_colors.dart';
+import 'package:boom_mobile/domain/entities/station.dart';
 
 class StationFormesTab extends StatefulWidget {
   final Station station;
@@ -70,14 +68,18 @@ class _StationFormesTabState extends State<StationFormesTab> {
     final stationService = Provider.of<StationService>(context, listen: false);
     final station = stationService.getStation(widget.station);
 
-    // Initialiser les contrôleurs
+    // ✅ CORRECTION: Initialiser les contrôleurs avec conversion de types
     _circonferenceController.text = station.circonferenceTronc?.toString() ?? '';
     _hauteurController.text = station.hauteurGenerale?.toString() ?? '';
 
-    // Initialiser les valeurs de sélection
+    // ✅ CORRECTION: Initialiser les valeurs de sélection avec gestion null
     _selectedStructureTronc = station.structureTronc;
     _selectedPortForme = station.portForme;
-    _selectedDiametreTronc = station.diametreTronc;
+
+    // ✅ CORRECTION: Pour diametreTronc qui est maintenant double?, on le convertit en String pour l'affichage
+    _selectedDiametreTronc = station.diametreTronc != null
+        ? station.diametreTronc.toString()  // Cette ligne pourrait causer une erreur si diametreTronc est utilisé comme dropdown
+        : null;
     _selectedDiametreHouppier = station.diametreHouppier;
   }
 
@@ -154,26 +156,22 @@ class _StationFormesTabState extends State<StationFormesTab> {
             const BoomBoutton(title: "DIMENSIONS"),
             const SizedBox(height: 16),
 
-            // Diamètre du tronc
-            DropdownButtonFormField<String>(
-              value: _selectedDiametreTronc,
+            // ✅ CORRECTION: Diamètre du tronc - Utiliser un TextField pour saisie numérique
+            TextField(
               decoration: const InputDecoration(
                 labelText: "Diamètre de tronc (à 1m30 - cm)",
                 border: OutlineInputBorder(),
+                hintText: "Ex: 25.5",
               ),
-              items: _diametresTronc.map((String option) {
-                return DropdownMenuItem<String>(
-                  value: option,
-                  child: Text(option),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedDiametreTronc = newValue;
-                });
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              controller: TextEditingController(
+                text: station.diametreTronc?.toString() ?? '',
+              ),
+              onChanged: (value) {
+                final diameter = double.tryParse(value);
                 stationService.updateStation(
                   station,
-                  diametreTronc: newValue,
+                  diametreTronc: diameter,
                 );
               },
             ),

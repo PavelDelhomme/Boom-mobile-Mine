@@ -67,13 +67,6 @@ class _MapFilterTagsState extends State<MapFilterTags> {
       height: 60,
       decoration: BoxDecoration(
         color: Colors.transparent,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         children: [

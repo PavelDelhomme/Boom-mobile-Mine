@@ -5,13 +5,13 @@ import 'package:flutter_map_line_editor/flutter_map_line_editor.dart';
 import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
 
 class AdvancedMapEditor extends StatefulWidget {
-  const AdvancedMapEditor({Key? key}) : super(key: key);
+  const AdvancedMapEditor({super.key});
 
   @override
-  _AdvancedMapEditorState createState() => _AdvancedMapEditorState();
+  AdvancedMapEditorState createState() => AdvancedMapEditorState();
 }
 
-class _AdvancedMapEditorState extends State<AdvancedMapEditor> {
+class AdvancedMapEditorState extends State<AdvancedMapEditor> {
   late PolyEditor polyEditor;
   List<Polyline> polylines = [];
   List<LatLng> currentPoints = [];

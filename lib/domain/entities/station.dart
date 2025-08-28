@@ -34,14 +34,14 @@ class Station {
   String? variete;
   String? stadeDeveloppement;
   bool? sujetVeteran;
-  String? anneePlantation;
+  int? anneePlantation;
   bool? appartenantGroupe;
   bool? arbreReplanter;
 
   // Forme et gabarit
   String? structureTronc;
   String? portForme;
-  String? diametreTronc;
+  double? diametreTronc; // ✅ CORRECTION : double au lieu de String
   double? circonferenceTronc;
   String? diametreHouppier;
   double? hauteurGenerale;
@@ -100,88 +100,88 @@ class Station {
     this.polygones,
   });
 
-  // ✅ Méthode pour obtenir les coordonnées comme LatLng
+  // Méthode pour obtenir les coordonnées comme LatLng
   LatLng get coordinates => LatLng(latitude, longitude);
 
-  // ✅ Méthode pour mettre à jour la position
+  // Méthode pour mettre à jour la position
   void updatePosition(double newLatitude, double newLongitude) {
     latitude = newLatitude;
     longitude = newLongitude;
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour ajouter un point géographique
+  // Méthode pour ajouter un point géographique
   void addPoint(LatLng point) {
     points ??= [];
     points!.add(point);
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour ajouter une ligne
+  // Méthode pour ajouter une ligne
   void addLigne(List<LatLng> ligne) {
     lignes ??= [];
     lignes!.add(ligne);
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour ajouter un polygone
+  // Méthode pour ajouter un polygone
   void addPolygone(List<LatLng> polygone) {
     polygones ??= [];
     polygones!.add(polygone);
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour supprimer tous les points
+  // Méthode pour supprimer tous les points
   void clearPoints() {
     points?.clear();
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour supprimer toutes les lignes
+  // Méthode pour supprimer toutes les lignes
   void clearLignes() {
     lignes?.clear();
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour supprimer tous les polygones
+  // Méthode pour supprimer tous les polygones
   void clearPolygones() {
     polygones?.clear();
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour supprimer toutes les géométries
+  // Méthode pour supprimer toutes les géométries
   void clearAllGeometries() {
     clearPoints();
     clearLignes();
     clearPolygones();
   }
 
-  // ✅ Méthode pour ajouter une photo
+  // Méthode pour ajouter une photo
   void addPhoto(String photoUrl) {
     photoUrls ??= [];
     photoUrls!.add(photoUrl);
     updateModificationInfo();
   }
 
-  // ✅ Méthode pour supprimer une photo
+  // Méthode pour supprimer une photo
   void removePhoto(String photoUrl) {
     photoUrls?.remove(photoUrl);
     updateModificationInfo();
   }
 
-  // ✅ CORRECTION: Méthode publique pour mettre à jour les infos de modification
+  // Méthode publique pour mettre à jour les infos de modification
   void updateModificationInfo() {
     lastModifiedBy = "Modifié le ${DateTime.now().toString().substring(0, 19)}";
   }
 
-  // ✅ Méthode pour vérifier si la station a des géométries
+  // Méthode pour vérifier si la station a des géométries
   bool get hasGeometries {
     return (points?.isNotEmpty ?? false) ||
         (lignes?.isNotEmpty ?? false) ||
         (polygones?.isNotEmpty ?? false);
   }
 
-  // ✅ Méthode pour compter le nombre total de géométries
+  // Méthode pour compter le nombre total de géométries
   int get geometriesCount {
     int count = 0;
     count += points?.length ?? 0;
@@ -190,7 +190,7 @@ class Station {
     return count;
   }
 
-  // ✅ Méthode pour obtenir un résumé des géométries
+  // Méthode pour obtenir un résumé des géométries
   String get geometriesSummary {
     List<String> parts = [];
 
@@ -237,12 +237,12 @@ class Station {
     String? variete,
     String? stadeDeveloppement,
     bool? sujetVeteran,
-    String? anneePlantation,
+    int? anneePlantation,
     bool? appartenantGroupe,
     bool? arbreReplanter,
     String? structureTronc,
     String? portForme,
-    String? diametreTronc,
+    double? diametreTronc, // ✅ CORRECTION: double au lieu de String
     double? circonferenceTronc,
     String? diametreHouppier,
     double? hauteurGenerale,
@@ -288,10 +288,114 @@ class Station {
       circonferenceTronc: circonferenceTronc ?? this.circonferenceTronc,
       diametreHouppier: diametreHouppier ?? this.diametreHouppier,
       hauteurGenerale: hauteurGenerale ?? this.hauteurGenerale,
-      // ✅ CORRECTION: Types corrects pour les listes
+      // Types corrects pour les listes
       points: points ?? (this.points != null ? List<LatLng>.from(this.points!) : null),
       lignes: lignes ?? (this.lignes != null ? this.lignes!.map((ligne) => List<LatLng>.from(ligne)).toList() : null),
       polygones: polygones ?? (this.polygones != null ? this.polygones!.map((poly) => List<LatLng>.from(poly)).toList() : null),
+    );
+  }
+
+  factory Station.fromJson(Map<String, dynamic> json) => Station.fromMap(json);
+  Map<String, dynamic> toJson() => toMap();
+
+  Map<String, dynamic> toMap() => {
+    'numeroStation': numeroStation,
+    'latitude': latitude,
+    'longitude': longitude,
+    'treesToCut': treesToCut,
+    'warning': warning,
+    'highlight': highlight,
+    'lastModifiedBy': lastModifiedBy,
+    'treeLandscape': treeLandscape,
+    'humanFrequency': humanFrequency,
+    'espaceBoiseClasse': espaceBoiseClasse,
+    'interetPaysager': interetPaysager,
+    'codeEnvironnement': codeEnvironnement,
+    'alleeArbres': alleeArbres,
+    'perimetreMonument': perimetreMonument,
+    'sitePatrimonial': sitePatrimonial,
+    'autresProtections': autresProtections,
+    'meriteProtection': meriteProtection,
+    'commentaireProtection': commentaireProtection,
+    'commentaireMeriteProtection': commentaireMeriteProtection,
+    'photoUrls': photoUrls,
+    'identifiantExterne': identifiantExterne,
+    'archiveNumero': archiveNumero,
+    'adresse': adresse,
+    'baseDonneesEssence': baseDonneesEssence,
+    'essenceLibre': essenceLibre,
+    'variete': variete,
+    'stadeDeveloppement': stadeDeveloppement,
+    'sujetVeteran': sujetVeteran,
+    'anneePlantation': anneePlantation,
+    'appartenantGroupe': appartenantGroupe,
+    'arbreReplanter': arbreReplanter,
+    'structureTronc': structureTronc,
+    'portForme': portForme,
+    'diametreTronc': diametreTronc,
+    'circonferenceTronc': circonferenceTronc,
+    'diametreHouppier': diametreHouppier,
+    'hauteurGenerale': hauteurGenerale,
+    'points': points,
+    'lignes': lignes,
+    'polygones': polygones,
+  };
+
+  // ✅ CORRECTION: Méthode fromMap avec conversion de types safe
+  static Station fromMap(Map<String, dynamic> map) {
+    return Station(
+      numeroStation: map['numeroStation'] is String
+          ? int.parse(map['numeroStation'])
+          : map['numeroStation'],
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+      treesToCut: map['treesToCut'],
+      warning: map['warning'],
+      highlight: map['highlight'] ?? false,
+      lastModifiedBy: map['lastModifiedBy'],
+      treeLandscape: map['treeLandscape'],
+      humanFrequency: map['humanFrequency'] is String
+          ? int.tryParse(map['humanFrequency'])
+          : map['humanFrequency'],
+      espaceBoiseClasse: map['espaceBoiseClasse'],
+      interetPaysager: map['interetPaysager'],
+      codeEnvironnement: map['codeEnvironnement'],
+      alleeArbres: map['alleeArbres'],
+      perimetreMonument: map['perimetreMonument'],
+      sitePatrimonial: map['sitePatrimonial'],
+      autresProtections: map['autresProtections'],
+      meriteProtection: map['meriteProtection'],
+      commentaireProtection: map['commentaireProtection'],
+      commentaireMeriteProtection: map['commentaireMeriteProtection'],
+      photoUrls: (map['photoUrls'] as List<dynamic>?)?.cast<String>(),
+      identifiantExterne: map['identifiantExterne'],
+      archiveNumero: map['archiveNumero'],
+      adresse: map['adresse'],
+      baseDonneesEssence: map['baseDonneesEssence'],
+      essenceLibre: map['essenceLibre'],
+      variete: map['variete'],
+      stadeDeveloppement: map['stadeDeveloppement'],
+      sujetVeteran: map['sujetVeteran'],
+      anneePlantation: map['anneePlantation'] is String
+          ? int.tryParse(map['anneePlantation'])
+          : map['anneePlantation'],
+      appartenantGroupe: map['appartenantGroupe'],
+      arbreReplanter: map['arbreReplanter'],
+      structureTronc: map['structureTronc'],
+      portForme: map['portForme'],
+      diametreTronc: map['diametreTronc'] is String
+          ? double.tryParse(map['diametreTronc'])
+          : (map['diametreTronc'] as num?)?.toDouble(),
+      circonferenceTronc: map['circonferenceTronc'] is String
+          ? double.tryParse(map['circonferenceTronc'])
+          : (map['circonferenceTronc'] as num?)?.toDouble(),
+      diametreHouppier: map['diametreHouppier'],
+      hauteurGenerale: map['hauteurGenerale'] is String
+          ? double.tryParse(map['hauteurGenerale'])
+          : (map['hauteurGenerale'] as num?)?.toDouble(),
+      points: (map['points'] as List<dynamic>?)?.cast<LatLng>(),
+      lignes: (map['lignes'] as List<dynamic>?)?.map((e) => (e as List<dynamic>).cast<LatLng>()).toList(),
+      polygones: (map['polygones'] as List<dynamic>?)?.map((e) => (e as List<dynamic>).cast<LatLng>()).toList(),
     );
   }
 }

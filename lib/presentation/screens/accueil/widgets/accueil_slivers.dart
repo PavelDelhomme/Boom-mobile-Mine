@@ -61,6 +61,9 @@ class AccueilSlivers extends StatefulWidget {
 }
 
 class _AccueilSliversState extends State<AccueilSlivers> {
+  // ✅ AJOUT: FocusNode pour gérer le focus de la barre de recherche
+  final FocusNode _searchFocusNode = FocusNode();
+
   final List<AccueilSliverSection> _order = [
     AccueilSliverSection.topBar,
     AccueilSliverSection.welcomeBanner,
@@ -73,11 +76,49 @@ class _AccueilSliversState extends State<AccueilSlivers> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    // ✅ AJOUT: Gérer le scroll quand le clavier apparaît/disparaît
+    _searchFocusNode.addListener(() {
+      if (_searchFocusNode.hasFocus) {
+        // Scroll vers la barre de recherche quand elle reçoit le focus
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToSearchBar();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  // ✅ AJOUT: Méthode pour scroller vers la barre de recherche
+  void _scrollToSearchBar() {
+    final double targetOffset = 450.0; // Position approximative de la search bar
+    widget.scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return CustomScrollView(
       controller: widget.scrollController,
       physics: const BouncingScrollPhysics(),
-      slivers: _order.map(_buildSliver).toList(),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        ..._order.map(_buildSliver).toList(),
+        // ✅ CORRECTION: Espace réduit pour éviter le scroll excessif
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 100), // Réduit de 300 à 100
+        ),
+      ],
     );
   }
 
@@ -89,12 +130,14 @@ class _AccueilSliversState extends State<AccueilSlivers> {
           showBadgeNotifier: widget.showBadgeNotifier,
           isTabBarStickyNotifier: widget.isTabBarStickyNotifier,
         ), height: kAppTopBarHeight);
+
       case AccueilSliverSection.welcomeBanner:
         return SliverToBoxAdapter(child: WelcomeBanner(
           userName: "Emmanuel",
           userRole: "Administrateur",
           imageUrl: kBienvenueImage,
         ));
+
       case AccueilSliverSection.switchBanner:
         return SliverToBoxAdapter(child: ValueListenableBuilder<bool>(
           valueListenable: widget.isTabBarStickyNotifier,
@@ -119,6 +162,7 @@ class _AccueilSliversState extends State<AccueilSlivers> {
             );
           },
         ));
+
       case AccueilSliverSection.tabBar:
         return _sliverPersistent(child: BoomTabHeader(
           currentIndex: widget.tabController.index,
@@ -126,24 +170,27 @@ class _AccueilSliversState extends State<AccueilSlivers> {
           onTap: (i) => setState(() => widget.tabController.index = i),
           onChanged: (i) => setState(() => widget.tabController.index = i),
         ), height: kTabBarHeight);
+
       case AccueilSliverSection.horizontalList:
         return SliverToBoxAdapter(child: _buildList(isHorizontal: true));
+
       case AccueilSliverSection.searchBar:
         return _sliverPersistent(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ReusableSearchBar(
-              controller: widget.searchController,
-              placeholder: _getPlaceholder(),
-              showTrailing: true,
-              onTrailingPressed: _handleAddItem,
-              onChanged: (_) => widget.onSearchChanged(),
-            ),
+          child: ReusableSearchBar(
+            controller: widget.searchController,
+            placeholder: _getPlaceholder(),
+            showTrailing: true,
+            onTrailingPressed: _handleAddItem,
+            onChanged: (value) {
+              widget.onSearchChanged();
+            },
           ),
-          height: kSearchBarHeight,
+          height: kSearchBarHeight + 8, // ✅ CORRECTION: Hauteur normale de la search bar
         );
+
       case AccueilSliverSection.spacer:
         return const SliverToBoxAdapter(child: SizedBox(height: 12));
+
       case AccueilSliverSection.verticalList:
         return _buildList(isHorizontal: false);
     }
@@ -176,7 +223,10 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     title: "Derniers dossiers",
     items: widget.allItems.cast<Dossier>(),
     itemBuilder: (d) => GenericHorizontalCardItem(
-      title: d.nom, subtitle: d.type, date: d.date, imageUrl: kDossierImage,
+      title: d.nom,
+      subtitle: d.type,
+      date: d.date,
+      imageUrl: kDossierImage,
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(dossier: d))),
       badge: _badge("${d.stations.length}"),
     ),
@@ -187,9 +237,10 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     items: widget.items.cast<Dossier>(),
     filter: (d, q) => d.nom.toLowerCase().contains(q) || d.type.toLowerCase().contains(q),
     itemBuilder: (c, d) => DossiersVerticalListItem(
-      name: d.nom, type: d.type,
+      name: d.nom,
+      type: d.type,
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MapScreen(dossier: d))),
-      onOptionsTap: () {},
+      onOptionsTap: () => _showDossierOptions(d),
     ),
   );
 
@@ -198,8 +249,12 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     items: widget.allItems.cast<User>().take(6).toList(),
     itemBuilder: (u) => GenericHorizontalCardItem(
       borderRadius: BorderRadius.circular(16),
-      title: u.name, subtitle: u.role, date: u.date, imageUrl: kAvatar,
-      onTap: () => _showUserDetails(u), imageBorderRadius: 8,
+      title: u.name,
+      subtitle: u.role,
+      date: u.date,
+      imageUrl: kAvatar,
+      onTap: () => _showUserDetails(u),
+      imageBorderRadius: 8,
     ),
   );
 
@@ -208,8 +263,11 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     items: widget.items.cast<User>(),
     filter: (u, q) => u.name.toLowerCase().contains(q) || u.email.toLowerCase().contains(q) || u.role.toLowerCase().contains(q),
     itemBuilder: (c, u) => UsersVerticalListItem(
-      name: u.name, email: u.email, role: u.role,
-      onTap: () => _showUserDetails(u), onOptionsTap: () => _showUserOptions(u),
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      onTap: () => _showUserDetails(u),
+      onOptionsTap: () => _showUserOptions(u),
     ),
   );
 
@@ -217,7 +275,9 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     title: "Couches disponibles",
     items: widget.allItems.cast<Layer>().take(6).toList(),
     itemBuilder: (l) => GenericHorizontalCardItem(
-      title: l.nom, subtitle: l.type, date: l.date,
+      title: l.nom,
+      subtitle: l.type,
+      date: l.date,
       onTap: () => _showLayerDetails(l),
       badge: _layerBadge(l),
     ),
@@ -228,7 +288,9 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     items: widget.items.cast<Layer>(),
     filter: (l, q) => l.nom.toLowerCase().contains(q) || l.type.toLowerCase().contains(q),
     itemBuilder: (c, l) => LayersVerticalListItem(
-      name: l.nom, type: l.type, date: l.date,
+      name: l.nom,
+      type: l.type,
+      date: l.date,
       onTap: () => _showLayerDetails(l),
       onOptionsTap: () => _showLayerOptions(l),
     ),
@@ -237,7 +299,8 @@ class _AccueilSliversState extends State<AccueilSlivers> {
   Widget _badge(String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     decoration: BoxDecoration(
-      color: AppColors.orange, borderRadius: BorderRadius.circular(9),
+      color: AppColors.orange,
+      borderRadius: BorderRadius.circular(9),
       border: Border.all(color: Colors.white, width: 2),
     ),
     child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -246,7 +309,8 @@ class _AccueilSliversState extends State<AccueilSlivers> {
   Widget _layerBadge(Layer l) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     decoration: BoxDecoration(
-      color: AppColors.primaryGreen, borderRadius: BorderRadius.circular(9),
+      color: AppColors.primaryGreen,
+      borderRadius: BorderRadius.circular(9),
       border: Border.all(color: Colors.white, width: 2),
     ),
     child: const Icon(Icons.layers, color: Colors.white, size: 12),
@@ -269,6 +333,45 @@ class _AccueilSliversState extends State<AccueilSlivers> {
     }
   }
 
+  // ✅ AJOUT: Méthodes pour gérer les actions sur les éléments
+  void _showDossierOptions(Dossier dossier) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Modifier'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Éditer dossier
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Dupliquer'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Dupliquer dossier
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.archive),
+              title: const Text('Archiver'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Archiver dossier
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showUserDetails(User user) {
     showDialog(
       context: context,
@@ -287,6 +390,14 @@ class _AccueilSliversState extends State<AccueilSlivers> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Fermer'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Modifier'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Supprimer'),
           ),
         ],
       ),

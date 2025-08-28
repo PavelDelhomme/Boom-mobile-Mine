@@ -1,18 +1,18 @@
 import 'package:boom_mobile/core/theme/app_colors.dart';
 import 'package:boom_mobile/core/widgets/buttons/copy_button.dart';
+import 'package:boom_mobile/data/services/modification_service.dart';
+import 'package:boom_mobile/data/services/station_service.dart';
 import 'package:boom_mobile/domain/entities/station.dart';
 import 'package:boom_mobile/presentation/screens/map/widgets/in_map_elements/stations/bottomsheet/tabs/context_tab.dart';
 import 'package:boom_mobile/presentation/screens/map/widgets/in_map_elements/stations/bottomsheet/tabs/formes_tab.dart';
 import 'package:boom_mobile/presentation/screens/map/widgets/in_map_elements/stations/bottomsheet/tabs/identity_tab.dart';
 import 'package:boom_mobile/presentation/screens/map/widgets/in_map_elements/stations/bottomsheet/station_tab_bar_headers.dart';
-import 'package:boom_mobile/services/station_service.dart';
-import 'package:boom_mobile/services/modification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class StationBottomSheet extends StatefulWidget {
   final Station station;
-  final String? dossierName; // ✅ Nom du dossier pour les modifications
+  final String? dossierName; // Nom du dossier pour les modifications
   final VoidCallback? onDrawingRequested;
 
   const StationBottomSheet({
@@ -28,18 +28,18 @@ class StationBottomSheet extends StatefulWidget {
 
 class _StationBottomSheetState extends State<StationBottomSheet> {
   int currentTabIndex = 0;
-  Station? _originalStation; // ✅ Station originale pour le rollback
-  bool _hasUnsavedChanges = false; // ✅ Indicateur de modifications non sauvées
+  Station? _originalStation; // Station originale pour le rollback
+  bool _hasUnsavedChanges = false; // Indicateur de modifications non sauvées
 
   @override
   void initState() {
     super.initState();
-    // ✅ Sauvegarder l'état original de la station
+    // Sauvegarder l'état original de la station
     final stationService = context.read<StationService>();
     _originalStation = stationService.getStation(widget.station);
   }
 
-  // ✅ Vérifier s'il y a des modifications locales
+  // Vérifier s'il y a des modifications locales
   void _checkForChanges() {
     if (_originalStation != null) {
       final stationService = context.read<StationService>();
@@ -49,7 +49,11 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
       final hasChanges = _originalStation!.identifiantExterne != currentStation.identifiantExterne ||
           _originalStation!.adresse != currentStation.adresse ||
           _originalStation!.essenceLibre != currentStation.essenceLibre ||
-          _originalStation!.baseDonneesEssence != currentStation.baseDonneesEssence;
+          _originalStation!.baseDonneesEssence != currentStation.baseDonneesEssence ||
+          _originalStation!.anneePlantation != currentStation.anneePlantation ||
+          _originalStation!.diametreTronc != currentStation.diametreTronc ||
+          _originalStation!.circonferenceTronc != currentStation.circonferenceTronc ||
+          _originalStation!.hauteurGenerale != currentStation.hauteurGenerale;
 
       if (hasChanges != _hasUnsavedChanges) {
         setState(() {
@@ -76,7 +80,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ✅ En-tête avec indicateur de modifications
+                // En-tête avec indicateur de modifications
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -90,7 +94,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                             color: AppColors.primaryGreen,
                           ),
                         ),
-                        // ✅ Indicateur de modifications
+                        // Indicateur de modifications
                         if (_hasUnsavedChanges ||
                             (widget.dossierName != null &&
                                 modificationService.hasPendingModifications(widget.dossierName!)))
@@ -120,7 +124,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                             icon: const Icon(Icons.edit_location_alt, color: Colors.green),
                             tooltip: 'Dessiner sur la carte',
                             onPressed: () {
-                              // ✅ Retourner les données nécessaires pour le mode dessin
+                              // Retourner les données nécessaires pour le mode dessin
                               Navigator.pop(context, {
                                 'drawingMode': true,
                                 'station': station,
@@ -138,7 +142,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                           );
                         }),
 
-                        // ✅ Bouton de rollback local si modifications
+                        // Bouton de rollback local si modifications
                         if (_hasUnsavedChanges)
                           IconButton(
                             icon: const Icon(Icons.undo, color: Colors.orange),
@@ -156,7 +160,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                 ),
                 const SizedBox(height: 8),
 
-                // ✅ Barre d'information des modifications si applicable
+                // Barre d'information des modifications si applicable
                 if (widget.dossierName != null &&
                     modificationService.hasPendingModifications(widget.dossierName!))
                   Container(
@@ -197,7 +201,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                   child: IndexedStack(
                     index: currentTabIndex,
                     children: [
-                      // ✅ Onglet Contexte avec callback de modification
+                      // Onglet Contexte avec callback de modification
                       StationContextTab(
                         station: station,
                         onModified: () {
@@ -206,7 +210,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                         },
                       ),
 
-                      // ✅ Onglet Identité avec callback de modification
+                      // Onglet Identité avec callback de modification
                       StationIdentiteTab(
                         station: station,
                         onPhotosUpdated: (newPhotos) {
@@ -223,7 +227,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                         },
                       ),
 
-                      // ✅ Onglet Formes avec callback de modification
+                      // Onglet Formes avec callback de modification
                       StationFormesTab(
                         station: station,
                         onModified: () {
@@ -235,7 +239,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
                   ),
                 ),
 
-                // ✅ Boutons d'action en bas
+                // Boutons d'action en bas
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Row(
@@ -287,7 +291,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
     );
   }
 
-  // ✅ Enregistrer la modification dans le service
+  // Enregistrer la modification dans le service
   void _registerModification(Station station) {
     if (widget.dossierName != null && _originalStation != null) {
       final modificationService = context.read<ModificationService>();
@@ -300,7 +304,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
     }
   }
 
-  // ✅ Rollback des modifications locales
+  // Rollback des modifications locales
   void _rollbackLocalChanges() {
     if (_originalStation != null) {
       final stationService = context.read<StationService>();
@@ -343,7 +347,7 @@ class _StationBottomSheetState extends State<StationBottomSheet> {
     }
   }
 
-  // ✅ Sauvegarder les modifications
+  // Sauvegarder les modifications
   void _saveChanges() {
     if (_hasUnsavedChanges) {
       final stationService = context.read<StationService>();

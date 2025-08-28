@@ -5,7 +5,10 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:boom_mobile/services/offline_cache_service.dart';
+import 'package:boom_mobile/data/repositories/geometry_repository.dart';
+import 'package:boom_mobile/data/services/offline_cache_service.dart';
+import 'package:boom_mobile/data/services/station_version_manager.dart';
+import 'package:boom_mobile/data/services/tile_cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,7 +17,12 @@ import 'package:boom_mobile/main.dart';
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(BoomMobileApp(offlineCacheService: OfflineCacheService()));
+    await tester.pumpWidget(BoomMobileApp(
+      offlineCacheService: OfflineCacheService(),
+      tileCacheService: TileCacheService(),
+      geometryRepository: GeometryRepository(),
+      stationVersionManager: StationVersionManager(),
+    ));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);

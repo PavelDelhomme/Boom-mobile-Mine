@@ -58,14 +58,20 @@ class _AccueilScreenState extends State<AccueilScreen> with SingleTickerProvider
     );
   }
 
+  // ✅ CORRECTION: Logique de filtrage corrigée pour gérer le texte vide
   dynamic _filteredItems() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase().trim();
     final index = _controller.tabController.index;
+
+    // ✅ CORRECTION: Si la recherche est vide, retourner tous les éléments
+    if (query.isEmpty) {
+      return _getAllItems();
+    }
 
     if (index == 0) {
       // Dossiers
       return AppData.dossiers.where((dossier) =>
-          dossier.nom.toLowerCase().contains(query) ||
+      dossier.nom.toLowerCase().contains(query) ||
           dossier.type.toLowerCase().contains(query)
       ).toList();
     } else if (index == 1) {
@@ -85,7 +91,7 @@ class _AccueilScreenState extends State<AccueilScreen> with SingleTickerProvider
     return [];
   }
 
-  // Méthode manquante - données non filtrées pour les sections horizontales
+  // Méthode pour données non filtrées pour les sections horizontales
   dynamic _getAllItems() {
     final index = _controller.tabController.index;
 
@@ -114,7 +120,7 @@ class _AccueilScreenState extends State<AccueilScreen> with SingleTickerProvider
             items: _filteredItems(),
             currentIndex: _tabController.index,
             onSearchChanged: () => setState(() {}),
-            allItems: _getAllItems(), // ← Correction ici
+            allItems: _getAllItems(),
           ),
         ),
       ),

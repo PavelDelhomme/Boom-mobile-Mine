@@ -1,12 +1,12 @@
+import 'package:boom_mobile/data/services/station_service.dart';
 import 'package:boom_mobile/domain/entities/station.dart';
-import 'package:boom_mobile/services/station_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:boom_mobile/core/widgets/form/boom_text_field.dart';
 import 'package:boom_mobile/core/widgets/form/boom_switch_tile.dart';
 import 'package:boom_mobile/core/widgets/form/boom_slider.dart';
 import 'package:boom_mobile/core/widgets/form/boom_title_with_divider.dart';
-import '../../../../../../../../core/widgets/form/boom_text_area_field.dart';
+import 'package:boom_mobile/core/widgets/form/boom_text_area_field.dart';
 
 class StationContextTab extends StatefulWidget {
   final Station station;

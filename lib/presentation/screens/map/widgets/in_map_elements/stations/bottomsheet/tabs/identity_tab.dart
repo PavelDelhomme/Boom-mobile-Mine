@@ -1,13 +1,12 @@
+import 'package:boom_mobile/data/services/station_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:boom_mobile/core/widgets/form/boom_text_field.dart';
 import 'package:boom_mobile/core/widgets/form/boom_switch_tile.dart';
 import 'package:boom_mobile/core/widgets/form/boom_photo_viewer.dart';
-import 'package:boom_mobile/core/widgets/form/boom_text_area_field.dart';
 import 'package:boom_mobile/core/widgets/form/boom_title_with_divider.dart';
-import 'package:boom_mobile/services/station_service.dart';
 
-import '../../../../../../../../domain/entities/station.dart';
+import 'package:boom_mobile/domain/entities/station.dart';
 
 class StationIdentiteTab extends StatefulWidget {
   final Station station;
@@ -88,7 +87,9 @@ class _StationIdentiteTabState extends State<StationIdentiteTab> {
     _adresseController.text = station.adresse ?? '';
     _essenceLibreController.text = station.essenceLibre ?? '';
     _varieteController.text = station.variete ?? '';
-    _anneePlantationController.text = station.anneePlantation ?? '';
+
+    // ✅ CORRECTION: Conversion sécurisée int? vers String
+    _anneePlantationController.text = station.anneePlantation?.toString() ?? '';
 
     // Initialiser les valeurs de sélection
     _selectedBaseDonneesEssence = station.baseDonneesEssence;
@@ -307,7 +308,7 @@ class _StationIdentiteTabState extends State<StationIdentiteTab> {
 
             const SizedBox(height: 12),
 
-            // Année de plantation
+            // ✅ CORRECTION: Année de plantation - Conversion String vers int?
             TextField(
               controller: _anneePlantationController,
               decoration: const InputDecoration(
@@ -317,9 +318,11 @@ class _StationIdentiteTabState extends State<StationIdentiteTab> {
               ),
               keyboardType: TextInputType.number,
               onChanged: (value) {
+                // ✅ CORRECTION: Parser la String en int?
+                final annee = int.tryParse(value);
                 stationService.updateStation(
                   station,
-                  anneePlantation: value,
+                  anneePlantation: annee,
                 );
               },
             ),
